@@ -10,24 +10,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.ridehaillingapp.data.model.Driver
-import com.example.ridehaillingapp.data.model.Ride
 import com.example.ridehaillingapp.data.model.LocationData
+import com.example.ridehaillingapp.data.model.Ride
 import com.example.ridehaillingapp.viewmodel.RideViewModel
-import com.example.ridehaillingapp.util.FareCalculator
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
-import kotlin.random.Random
 
 @Composable
 fun MainScreen(
     viewModel: RideViewModel = hiltViewModel()
 ) {
     val rides by viewModel.rides.collectAsState()
+    val fareEstimate by viewModel.fareEstimate.collectAsState()
+    val rideConfirmation by viewModel.rideConfirmation.collectAsState()
 
     var pickup by remember { mutableStateOf("") }
     var destination by remember { mutableStateOf("") }
-    var fareEstimate by remember { mutableDoubleStateOf(0.0) }
 
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(LatLng(0.0, 0.0), 12f)
@@ -38,7 +37,7 @@ fun MainScreen(
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        // 🌍 Google Map
+        //  Google Map Included by mE!
         GoogleMap(
             modifier = Modifier
                 .fillMaxWidth()
@@ -77,45 +76,62 @@ fun MainScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        Button(
-            onClick = {
-                val distanceKm = Random.nextInt(1, 10).toDouble()
-                val isPeakHour = false // Simulate peak hours if needed
-                val trafficLevel = 1.2 // Simulated traffic
-
-                fareEstimate = FareCalculator.calculateFare(distanceKm, isPeakHour, trafficLevel)
-
-                val ride = Ride(
-                    driver = Driver(
-                        name = "John Doe",
-                        rating = 4.5f,
-                        licenseNumber = "XYZ1234"
-                    ),
-                    startLocation = LocationData(
-                        latitude = 0.0,
-                        longitude = 0.0,
-                        address = pickup
-                    ),
-                    endLocation = LocationData(
-                        latitude = 0.0,
-                        longitude = 0.0,
-                        address = destination
-                    ),
-                    fare = fareEstimate,
-                    timestamp = System.currentTimeMillis()
-                )
-
-                viewModel.addRide(ride)
-            },
-            modifier = Modifier.align(Alignment.End)
+        Row(
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Request Ride")
+            Button(
+                onClick = {
+                    // 🔷 Trigger fare estimate via ViewModel
+                    val distanceKm = (1..10).random().toDouble()
+                    val timeMinutes = (5..20).random().toDouble()
+                    viewModel.calculateFare(distanceKm, timeMinutes)
+                }
+            ) {
+                Text("Estimate Fare")
+            }
+
+            Button(
+                onClick = {
+
+                    viewModel.requestRide()
+
+                    // save ride to DB
+                    val ride = Ride(
+                        driver = Driver(
+                            name = rideConfirmation?.driverName ?: "Unknown",
+                            rating = 4.5f,
+                            licenseNumber = rideConfirmation?.plateNumber ?: "N/A"
+                        ),
+                        startLocation = LocationData(
+                            latitude = 0.0,
+                            longitude = 0.0,
+                            address = pickup
+                        ),
+                        endLocation = LocationData(
+                            latitude = 0.0,
+                            longitude = 0.0,
+                            address = destination
+                        ),
+                        fare = fareEstimate ?: 0.0,
+                        timestamp = System.currentTimeMillis()
+                    )
+                    viewModel.addRide(ride)
+                }
+            ) {
+                Text("Request Ride")
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "Estimated Fare: $${"%.2f".format(fareEstimate)}",
+            text = "Estimated Fare: ${fareEstimate?.let { "$%.2f".format(it) } ?: "--"}",
+            style = MaterialTheme.typography.bodyLarge
+        )
+
+        Text(
+            text = "Ride Status: ${rideConfirmation?.status ?: "Not Requested"}",
             style = MaterialTheme.typography.bodyLarge
         )
 
