@@ -6,13 +6,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.ridehaillingapp.data.model.Driver
 import com.example.ridehaillingapp.data.model.Ride
-import com.example.ridehaillingapp.model.LocationData
+import com.example.ridehaillingapp.data.model.LocationData
 import com.example.ridehaillingapp.viewmodel.RideViewModel
 import kotlin.random.Random
 

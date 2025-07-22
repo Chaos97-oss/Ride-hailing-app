@@ -3,7 +3,6 @@ package com.example.ridehaillingapp.data.model
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import androidx.room.Embedded
-import com.example.ridehaillingapp.model.LocationData
 
 @Entity(tableName = "ride_table")
 data class Ride(

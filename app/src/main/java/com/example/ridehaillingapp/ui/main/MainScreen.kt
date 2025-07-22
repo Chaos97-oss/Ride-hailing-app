@@ -11,9 +11,12 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.ridehaillingapp.data.model.Driver
 import com.example.ridehaillingapp.data.model.Ride
-import com.example.ridehaillingapp.model.LocationData
+import com.example.ridehaillingapp.data.model.LocationData
 import com.example.ridehaillingapp.viewmodel.RideViewModel
 import com.example.ridehaillingapp.util.FareCalculator
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.*
 import kotlin.random.Random
 
 @Composable
@@ -24,17 +27,36 @@ fun MainScreen(
 
     var pickup by remember { mutableStateOf("") }
     var destination by remember { mutableStateOf("") }
-    var fareEstimate by remember { mutableStateOf(0.0) }
+    var fareEstimate by remember { mutableDoubleStateOf(0.0) }
+
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(LatLng(0.0, 0.0), 12f)
+    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
+        // 🌍 Google Map
+        GoogleMap(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(250.dp),
+            cameraPositionState = cameraPositionState
+        ) {
+            Marker(
+                state = MarkerState(position = LatLng(0.0, 0.0)),
+                title = "You are here"
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
         Text(
             text = "Request a Ride",
             style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier.padding(bottom = 16.dp)
+            modifier = Modifier.padding(bottom = 8.dp)
         )
 
         OutlinedTextField(
@@ -58,8 +80,8 @@ fun MainScreen(
         Button(
             onClick = {
                 val distanceKm = Random.nextInt(1, 10).toDouble()
-                val isPeakHour = false  // Simulate peak hours if needed
-                val trafficLevel = 1.2  // Simulated traffic
+                val isPeakHour = false // Simulate peak hours if needed
+                val trafficLevel = 1.2 // Simulated traffic
 
                 fareEstimate = FareCalculator.calculateFare(distanceKm, isPeakHour, trafficLevel)
 

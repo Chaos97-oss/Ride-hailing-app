@@ -1,4 +1,4 @@
-package com.example.ridehaillingapp.model
+package com.example.ridehaillingapp.data.model
 
 data class LocationData(
     val latitude: Double,
