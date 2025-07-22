@@ -9,6 +9,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavHostController
 import com.example.ridehaillingapp.data.model.Driver
 import com.example.ridehaillingapp.data.model.LocationData
 import com.example.ridehaillingapp.data.model.Ride
@@ -19,11 +20,12 @@ import com.google.maps.android.compose.*
 
 @Composable
 fun MainScreen(
+    navController: NavHostController,
     viewModel: RideViewModel = hiltViewModel()
 ) {
     val rides by viewModel.rides.collectAsState()
-    val fareEstimate by viewModel.fareEstimate.collectAsState()
-    val rideConfirmation by viewModel.rideConfirmation.collectAsState()
+    val fareEstimate by viewModel.fareEstimate.collectAsState(initial = null)
+    val rideConfirmation by viewModel.rideConfirmation.collectAsState(initial = null)
 
     var pickup by remember { mutableStateOf("") }
     var destination by remember { mutableStateOf("") }
@@ -37,11 +39,25 @@ fun MainScreen(
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        //  Google Map Included by mE!
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Request a Ride",
+                style = MaterialTheme.typography.headlineSmall
+            )
+            Button(onClick = { navController.navigate("history") }) {
+                Text("View History")
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
         GoogleMap(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(250.dp),
+                .height(200.dp),
             cameraPositionState = cameraPositionState
         ) {
             Marker(
@@ -51,12 +67,6 @@ fun MainScreen(
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = "Request a Ride",
-            style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
 
         OutlinedTextField(
             value = pickup,
@@ -74,15 +84,14 @@ fun MainScreen(
             modifier = Modifier.fillMaxWidth()
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         Row(
-            horizontalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             Button(
                 onClick = {
-                    // 🔷 Trigger fare estimate via ViewModel
                     val distanceKm = (1..10).random().toDouble()
                     val timeMinutes = (5..20).random().toDouble()
                     viewModel.calculateFare(distanceKm, timeMinutes)
@@ -93,10 +102,8 @@ fun MainScreen(
 
             Button(
                 onClick = {
-
                     viewModel.requestRide()
 
-                    // save ride to DB
                     val ride = Ride(
                         driver = Driver(
                             name = rideConfirmation?.driverName ?: "Unknown",
@@ -146,7 +153,6 @@ fun MainScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .padding(top = 8.dp)
         ) {
             items(rides) { ride ->
                 Card(
