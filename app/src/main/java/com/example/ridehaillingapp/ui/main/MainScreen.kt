@@ -1,37 +1,84 @@
 package com.example.ridehaillingapp.ui.main
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.location.Geocoder
+import android.location.Location
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import com.example.ridehaillingapp.data.model.Driver
 import com.example.ridehaillingapp.data.model.LocationData
 import com.example.ridehaillingapp.data.model.Ride
 import com.example.ridehaillingapp.viewmodel.RideViewModel
+import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
 
+
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
 fun MainScreen(
     navController: NavHostController,
     viewModel: RideViewModel = hiltViewModel()
 ) {
     val rides by viewModel.rides.collectAsState()
-    val fareEstimate by viewModel.fareEstimate.collectAsState(initial = null)
-    val rideConfirmation by viewModel.rideConfirmation.collectAsState(initial = null)
+    val fareEstimate by viewModel.fareEstimate.collectAsState()
+    val rideConfirmation by viewModel.rideConfirmation.collectAsState()
 
     var pickup by remember { mutableStateOf("") }
     var destination by remember { mutableStateOf("") }
 
+    var currentLatLng by remember { mutableStateOf(LatLng(0.0, 0.0)) }
+
+    val context = LocalContext.current
+    val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
+
     val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(LatLng(0.0, 0.0), 12f)
+        position = CameraPosition.fromLatLngZoom(currentLatLng, 15f)
+    }
+
+
+    LaunchedEffect(Unit) {
+        if (ActivityCompat.checkSelfPermission(
+                context, Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED &&
+            ActivityCompat.checkSelfPermission(
+                context, Manifest.permission.ACCESS_COARSE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+
+            return@LaunchedEffect
+        }
+
+        fusedLocationClient.lastLocation.addOnSuccessListener { location: Location? ->
+            location?.let {
+                val latLng = LatLng(it.latitude, it.longitude)
+                currentLatLng = latLng
+
+
+                cameraPositionState.position = CameraPosition.fromLatLngZoom(latLng, 15f)
+
+
+                Geocoder(context).getFromLocation(it.latitude, it.longitude, 1) { addresses ->
+                    if (addresses.isNotEmpty()) {
+                        pickup = addresses[0].getAddressLine(0) ?: ""
+                    }
+                }
+            }
+        }
     }
 
     Column(
@@ -39,17 +86,12 @@ fun MainScreen(
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
+
+        Button(
+            onClick = { navController.navigate("history") },
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Text(
-                text = "Request a Ride",
-                style = MaterialTheme.typography.headlineSmall
-            )
-            Button(onClick = { navController.navigate("history") }) {
-                Text("View History")
-            }
+            Text("View Ride History")
         }
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -57,16 +99,22 @@ fun MainScreen(
         GoogleMap(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(200.dp),
+                .height(250.dp),
             cameraPositionState = cameraPositionState
         ) {
             Marker(
-                state = MarkerState(position = LatLng(0.0, 0.0)),
+                state = MarkerState(position = currentLatLng),
                 title = "You are here"
             )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = "Request a Ride",
+            style = MaterialTheme.typography.headlineSmall,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
 
         OutlinedTextField(
             value = pickup,
@@ -84,11 +132,11 @@ fun MainScreen(
             modifier = Modifier.fillMaxWidth()
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth()
         ) {
             Button(
                 onClick = {
@@ -111,8 +159,8 @@ fun MainScreen(
                             licenseNumber = rideConfirmation?.plateNumber ?: "N/A"
                         ),
                         startLocation = LocationData(
-                            latitude = 0.0,
-                            longitude = 0.0,
+                            latitude = currentLatLng.latitude,
+                            longitude = currentLatLng.longitude,
                             address = pickup
                         ),
                         endLocation = LocationData(
@@ -153,6 +201,7 @@ fun MainScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
+                .padding(top = 8.dp)
         ) {
             items(rides) { ride ->
                 Card(
