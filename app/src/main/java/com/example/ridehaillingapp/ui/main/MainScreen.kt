@@ -1,9 +1,5 @@
 package com.example.ridehaillingapp.ui.main
 
-import android.Manifest
-import android.content.pm.PackageManager
-import android.location.Geocoder
-import android.location.Location
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.*
@@ -11,27 +7,22 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.core.app.ActivityCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import com.example.ridehaillingapp.data.model.Driver
 import com.example.ridehaillingapp.data.model.LocationData
 import com.example.ridehaillingapp.data.model.Ride
+import com.example.ridehaillingapp.ui.map.MapScreen
 import com.example.ridehaillingapp.viewmodel.RideViewModel
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.compose.*
-
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
 fun MainScreen(
     navController: NavHostController,
+    isLocationPermissionGranted: Boolean,
     viewModel: RideViewModel = hiltViewModel()
 ) {
     val rides by viewModel.rides.collectAsState()
@@ -43,50 +34,11 @@ fun MainScreen(
 
     var currentLatLng by remember { mutableStateOf(LatLng(0.0, 0.0)) }
 
-    val context = LocalContext.current
-    val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
-
-    val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(currentLatLng, 15f)
-    }
-
-
-    LaunchedEffect(Unit) {
-        if (ActivityCompat.checkSelfPermission(
-                context, Manifest.permission.ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED &&
-            ActivityCompat.checkSelfPermission(
-                context, Manifest.permission.ACCESS_COARSE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-
-            return@LaunchedEffect
-        }
-
-        fusedLocationClient.lastLocation.addOnSuccessListener { location: Location? ->
-            location?.let {
-                val latLng = LatLng(it.latitude, it.longitude)
-                currentLatLng = latLng
-
-
-                cameraPositionState.position = CameraPosition.fromLatLngZoom(latLng, 15f)
-
-
-                Geocoder(context).getFromLocation(it.latitude, it.longitude, 1) { addresses ->
-                    if (addresses.isNotEmpty()) {
-                        pickup = addresses[0].getAddressLine(0) ?: ""
-                    }
-                }
-            }
-        }
-    }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
-
         Button(
             onClick = { navController.navigate("history") },
             modifier = Modifier.fillMaxWidth()
@@ -96,25 +48,20 @@ fun MainScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        GoogleMap(
+        // Use our new MapScreen
+        MapScreen(
+            isLocationPermissionGranted = isLocationPermissionGranted,
+            onPickupAddressDetected = { detectedAddress ->
+                pickup = detectedAddress
+            },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(250.dp),
-            cameraPositionState = cameraPositionState
-        ) {
-            Marker(
-                state = MarkerState(position = currentLatLng),
-                title = "You are here"
-            )
-        }
+                .height(250.dp)
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text(
-            text = "Request a Ride",
-            style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
+        Text("Request a Ride", style = MaterialTheme.typography.headlineSmall)
 
         OutlinedTextField(
             value = pickup,
@@ -151,7 +98,6 @@ fun MainScreen(
             Button(
                 onClick = {
                     viewModel.requestRide()
-
                     val ride = Ride(
                         driver = Driver(
                             name = rideConfirmation?.driverName ?: "Unknown",
@@ -180,22 +126,11 @@ fun MainScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text(
-            text = "Estimated Fare: ${fareEstimate?.let { "$%.2f".format(it) } ?: "--"}",
-            style = MaterialTheme.typography.bodyLarge
-        )
-
-        Text(
-            text = "Ride Status: ${rideConfirmation?.status ?: "Not Requested"}",
-            style = MaterialTheme.typography.bodyLarge
-        )
+        Text("Estimated Fare: ${fareEstimate?.let { "$%.2f".format(it) } ?: "--"}")
+        Text("Ride Status: ${rideConfirmation?.status ?: "Not Requested"}")
 
         Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = "Ride History",
-            style = MaterialTheme.typography.headlineSmall
-        )
+        Text("Ride History", style = MaterialTheme.typography.headlineSmall)
 
         LazyColumn(
             modifier = Modifier
@@ -204,11 +139,7 @@ fun MainScreen(
                 .padding(top = 8.dp)
         ) {
             items(rides) { ride ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp)
-                ) {
+                Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                     Column(modifier = Modifier.padding(8.dp)) {
                         Text("Driver: ${ride.driver.name}")
                         Text("From: ${ride.startLocation.address}")

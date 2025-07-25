@@ -7,10 +7,10 @@ import androidx.navigation.compose.composable
 import com.example.ridehaillingapp.ui.history.HistoryScreen
 import com.example.ridehaillingapp.ui.main.MainScreen
 
-
 @Composable
 fun AppNavGraph(
     navController: NavHostController,
+    isLocationPermissionGranted: Boolean,
     startDestination: String = "main"
 ) {
     NavHost(
@@ -18,7 +18,10 @@ fun AppNavGraph(
         startDestination = startDestination
     ) {
         composable("main") {
-            MainScreen(navController = navController)
+            MainScreen(
+                navController = navController,
+                isLocationPermissionGranted = isLocationPermissionGranted
+            )
         }
         composable("history") {
             HistoryScreen(navController = navController)
