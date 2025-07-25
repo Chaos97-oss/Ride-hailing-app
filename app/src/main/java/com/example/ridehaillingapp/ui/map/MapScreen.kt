@@ -50,7 +50,7 @@ fun MapScreen(
                             )
                         }
 
-                        // Autofill pickup address
+
                         Geocoder(context).getFromLocation(
                             latLng.latitude, latLng.longitude, 1
                         ) { addresses ->
