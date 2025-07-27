@@ -1,21 +1,20 @@
 package com.example.ridehaillingapp.ui.map
 
-import android.Manifest
-import android.content.pm.PackageManager
+import android.annotation.SuppressLint
+import android.content.Context
 import android.location.Geocoder
-import android.location.Location
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.core.app.ActivityCompat
-import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.util.*
 
-import kotlinx.coroutines.launch
-
+@SuppressLint("MissingPermission")
 @Composable
 fun MapScreen(
     isLocationPermissionGranted: Boolean,
@@ -23,54 +22,66 @@ fun MapScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val fusedLocationClient = remember {
-        LocationServices.getFusedLocationProviderClient(context)
-    }
+    var userLocation by remember { mutableStateOf(LatLng(0.0, 0.0)) }
+    var destinationLatLng by remember { mutableStateOf<LatLng?>(null) }
 
     val cameraPositionState = rememberCameraPositionState()
-    val coroutineScope = rememberCoroutineScope()
-
-    var currentLatLng by remember { mutableStateOf(LatLng(0.0, 0.0)) }
-
-    LaunchedEffect(isLocationPermissionGranted) {
-        if (isLocationPermissionGranted) {
-            if (ActivityCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.ACCESS_FINE_LOCATION
-                ) == PackageManager.PERMISSION_GRANTED
-            ) {
-                fusedLocationClient.lastLocation.addOnSuccessListener { location: Location? ->
-                    location?.let {
-                        val latLng = LatLng(it.latitude, it.longitude)
-                        currentLatLng = latLng
-
-                        coroutineScope.launch {
-                            cameraPositionState.animate(
-                                CameraUpdateFactory.newLatLngZoom(latLng, 15f)
-                            )
-                        }
-
-
-                        Geocoder(context).getFromLocation(
-                            latLng.latitude, latLng.longitude, 1
-                        ) { addresses ->
-                            if (!addresses.isNullOrEmpty()) {
-                                onPickupAddressDetected(addresses[0].getAddressLine(0) ?: "")
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
+    val mapProperties = MapProperties(isMyLocationEnabled = isLocationPermissionGranted)
+    val mapUiSettings = MapUiSettings(zoomControlsEnabled = false)
 
     GoogleMap(
         modifier = modifier,
-        cameraPositionState = cameraPositionState
+        properties = mapProperties,
+        uiSettings = mapUiSettings,
+        cameraPositionState = cameraPositionState,
+        onMapClick = { latLng ->
+            destinationLatLng = latLng
+        },
+        onMapLoaded = {
+            userLocation = LatLng(6.5244, 3.3792) // Lagos coordinates
+            cameraPositionState.move(CameraUpdateFactory.newLatLngZoom(userLocation, 14f))
+            detectAddress(context, userLocation) { address ->
+                onPickupAddressDetected(address)
+            }
+        }
     ) {
+
         Marker(
-            state = MarkerState(position = currentLatLng),
-            title = "You are here"
+            state = MarkerState(position = userLocation),
+            title = "You",
+            snippet = "Current Location"
         )
+
+
+        destinationLatLng?.let { dest ->
+            Marker(
+                state = MarkerState(position = dest),
+                title = "Destination"
+            )
+
+            Polyline(
+                points = listOf(userLocation, dest),
+                color = Color.Blue, // ✅ Jetpack Compose Color
+                width = 5f
+            )
+        }
+    }
+}
+
+private fun detectAddress(
+    context: Context,
+    latLng: LatLng,
+    onResult: (String) -> Unit
+) {
+    try {
+        val geocoder = Geocoder(context, Locale.getDefault())
+        val address = geocoder.getFromLocation(latLng.latitude, latLng.longitude, 1)
+        if (!address.isNullOrEmpty()) {
+            onResult(address[0].getAddressLine(0) ?: "Unknown Address")
+        } else {
+            onResult("Unknown Address")
+        }
+    } catch (e: Exception) {
+        onResult("Unknown Address")
     }
 }
