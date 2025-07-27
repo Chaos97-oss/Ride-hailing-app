@@ -48,7 +48,7 @@ fun MainScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Use our new MapScreen
+
         MapScreen(
             isLocationPermissionGranted = isLocationPermissionGranted,
             onPickupAddressDetected = { detectedAddress ->
