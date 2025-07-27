@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "384070162840",
+    "project_id": "myridehaillingapp",
+    "storage_bucket": "myridehaillingapp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:384070162840:android:e0af19114c71951454b3ed",
+        "android_client_info": {
+          "package_name": "com.example.ridehaillingapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBxwjJBw2QTmFayFJku3HnyG4bFJkSOuBc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

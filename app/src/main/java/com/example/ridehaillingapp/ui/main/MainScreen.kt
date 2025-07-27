@@ -100,7 +100,7 @@ fun MainScreen(
                     viewModel.requestRide()
                     val ride = Ride(
                         driver = Driver(
-                            name = rideConfirmation?.driverName ?: "Unknown",
+                            name = rideConfirmation?.driverName ?: "John Doe",
                             rating = 4.5f,
                             licenseNumber = rideConfirmation?.plateNumber ?: "N/A"
                         ),
