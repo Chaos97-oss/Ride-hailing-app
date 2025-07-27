@@ -76,7 +76,7 @@ dependencies {
 
     implementation("com.google.android.libraries.places:places:3.4.0")
     implementation("androidx.activity:activity-compose:1.7.2")
-
+    implementation("com.google.accompanist:accompanist-permissions:0.37.3")
     // Core libraries
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

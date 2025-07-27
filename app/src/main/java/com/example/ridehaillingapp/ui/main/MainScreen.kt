@@ -15,6 +15,7 @@ import com.example.ridehaillingapp.data.model.Driver
 import com.example.ridehaillingapp.data.model.LocationData
 import com.example.ridehaillingapp.data.model.Ride
 import com.example.ridehaillingapp.ui.map.MapScreen
+import androidx.compose.ui.text.input.TextFieldValue
 import com.example.ridehaillingapp.viewmodel.RideViewModel
 import com.google.android.gms.maps.model.LatLng
 
@@ -51,8 +52,12 @@ fun MainScreen(
 
         MapScreen(
             isLocationPermissionGranted = isLocationPermissionGranted,
+            destinationText = destination,
             onPickupAddressDetected = { detectedAddress ->
                 pickup = detectedAddress
+            },
+            onCurrentLatLngDetected = { latLng ->
+                currentLatLng = latLng
             },
             modifier = Modifier
                 .fillMaxWidth()
@@ -110,7 +115,7 @@ fun MainScreen(
                             address = pickup
                         ),
                         endLocation = LocationData(
-                            latitude = 0.0,
+                            latitude = 0.0,  // You can update this if needed
                             longitude = 0.0,
                             address = destination
                         ),

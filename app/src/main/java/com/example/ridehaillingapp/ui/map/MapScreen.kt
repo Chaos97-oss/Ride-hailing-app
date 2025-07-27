@@ -1,7 +1,6 @@
 package com.example.ridehaillingapp.ui.map
 
-import android.annotation.SuppressLint
-import android.content.Context
+import android.Manifest
 import android.location.Geocoder
 import android.location.Location
 import androidx.compose.foundation.layout.*
@@ -12,47 +11,50 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.rememberPermissionState
+import com.google.maps.android.compose.*
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.*
-import com.google.maps.android.compose.*
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-import kotlinx.coroutines.withContext
 import java.util.*
 
-@SuppressLint("MissingPermission")
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun MapScreen(
     isLocationPermissionGranted: Boolean,
-    modifier: Modifier = Modifier,
-    onPickupAddressDetected: (String) -> Unit = {}
+    destinationText: String,
+    onPickupAddressDetected: (String) -> Unit,
+    onCurrentLatLngDetected: (LatLng) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val fusedLocationProviderClient = remember {
-        LocationServices.getFusedLocationProviderClient(context)
-    }
-
-    var userLocation by remember { mutableStateOf<LatLng?>(null) }
-    var destinationLatLng by remember { mutableStateOf<LatLng?>(null) }
-    var destinationText by remember { mutableStateOf(TextFieldValue("")) }
-
+    val coroutineScope = rememberCoroutineScope()
     val cameraPositionState = rememberCameraPositionState()
-    val mapProperties = MapProperties(isMyLocationEnabled = isLocationPermissionGranted)
-    val mapUiSettings = MapUiSettings(zoomControlsEnabled = false)
+    val locationPermissionState = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION)
 
+    var currentLocation by remember { mutableStateOf<LatLng?>(null) }
+    var destinationLatLng by remember { mutableStateOf<LatLng?>(null) }
+    val polylinePoints = remember { mutableStateListOf<LatLng>() }
 
-    LaunchedEffect(isLocationPermissionGranted) {
-        if (isLocationPermissionGranted) {
+    // Watch for changes in destination string and update destinationLatLng
+    LaunchedEffect(destinationText) {
+        if (destinationText.isNotBlank()) {
+            val geocoder = Geocoder(context, Locale.getDefault())
             try {
-                val location: Location? = fusedLocationProviderClient.lastLocation.await()
-                location?.let {
-                    val currentLatLng = LatLng(it.latitude, it.longitude)
-                    userLocation = currentLatLng
-                    cameraPositionState.move(CameraUpdateFactory.newLatLngZoom(currentLatLng, 15f))
+                val addressList = geocoder.getFromLocationName(destinationText, 1)
+                if (!addressList.isNullOrEmpty()) {
+                    val address = addressList[0]
+                    val latLng = LatLng(address.latitude, address.longitude)
+                    destinationLatLng = latLng
 
-                    val address = getAddressFromLatLng(context, currentLatLng)
-                    onPickupAddressDetected(address)
+                    polylinePoints.clear()
+                    currentLocation?.let { polylinePoints.add(it) }
+                    polylinePoints.add(latLng)
+
+                    cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(latLng, 15f))
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -60,78 +62,63 @@ fun MapScreen(
         }
     }
 
-
-    LaunchedEffect(destinationText.text) {
-        if (destinationText.text.isNotEmpty()) {
+    // Request location only once at startup
+    LaunchedEffect(isLocationPermissionGranted) {
+        if (isLocationPermissionGranted) {
+            val locationClient = LocationServices.getFusedLocationProviderClient(context)
             try {
-                val geocoder = Geocoder(context)
-                val result = withContext(Dispatchers.IO) {
-                    geocoder.getFromLocationName(destinationText.text, 1)
+                val location: Location? = locationClient.lastLocation.await()
+                location?.let {
+                    val userLatLng = LatLng(it.latitude, it.longitude)
+                    currentLocation = userLatLng
+                    polylinePoints.clear()
+                    polylinePoints.add(userLatLng)
+
+                    cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(userLatLng, 15f))
+                    onCurrentLatLngDetected(userLatLng)
+
+                    val geocoder = Geocoder(context, Locale.getDefault())
+                    val addressList = geocoder.getFromLocation(userLatLng.latitude, userLatLng.longitude, 1)
+                    if (!addressList.isNullOrEmpty()) {
+                        val pickupAddress = addressList[0].getAddressLine(0)
+                        onPickupAddressDetected(pickupAddress)
+                    }
                 }
-                if (!result.isNullOrEmpty()) {
-                    val location = result[0]
-                    destinationLatLng = LatLng(location.latitude, location.longitude)
-                }
-            } catch (e: Exception) {
-                destinationLatLng = null
+            } catch (e: SecurityException) {
+                e.printStackTrace()
             }
         }
     }
 
-
-    Column(modifier = modifier.fillMaxSize()) {
-
-//        OutlinedTextField(
-//            value = destinationText,
-//            onValueChange = { destinationText = it },
-//            label = { Text("Enter Destination") },
-//            modifier = Modifier
-//                .fillMaxWidth()
-//                .padding(8.dp)
-//        )
-
+    Box(modifier = modifier) {  // Respect passed height/width
         GoogleMap(
-            modifier = Modifier
-                .fillMaxSize()
-                .weight(1f),
-            properties = mapProperties,
-            uiSettings = mapUiSettings,
-            cameraPositionState = cameraPositionState
+            modifier = Modifier.fillMaxSize(),
+            cameraPositionState = cameraPositionState,
+            properties = MapProperties(isMyLocationEnabled = isLocationPermissionGranted),
+            uiSettings = MapUiSettings(myLocationButtonEnabled = true)
         ) {
-            userLocation?.let { current ->
+            currentLocation?.let {
                 Marker(
-                    state = MarkerState(position = current),
+                    state = MarkerState(position = it),
                     title = "Pickup Location",
-                    snippet = "You're here"
+                    snippet = "You are here"
                 )
             }
 
-            destinationLatLng?.let { destination ->
+            destinationLatLng?.let {
                 Marker(
-                    state = MarkerState(position = destination),
+                    state = MarkerState(position = it),
                     title = "Destination"
                 )
+            }
 
-                userLocation?.let { pickup ->
-                    Polyline(
-                        points = listOf(pickup, destination),
-                        color = Color.Blue,
-                        width = 5f
-                    )
-                }
+            if (polylinePoints.size >= 2) {
+                Polyline(
+                    points = polylinePoints.toList(),
+                    color = Color.Blue,
+                    width = 5f
+                )
             }
         }
-    }
-}
-
-private suspend fun getAddressFromLatLng(context: Context, latLng: LatLng): String {
-    return try {
-        val geocoder = Geocoder(context, Locale.getDefault())
-        val addressList = withContext(Dispatchers.IO) {
-            geocoder.getFromLocation(latLng.latitude, latLng.longitude, 1)
-        }
-        addressList?.firstOrNull()?.getAddressLine(0) ?: "Unknown address"
-    } catch (e: Exception) {
-        "Unknown address"
     }
 }
