@@ -39,7 +39,7 @@ fun MapScreen(
     var destinationLatLng by remember { mutableStateOf<LatLng?>(null) }
     val polylinePoints = remember { mutableStateListOf<LatLng>() }
 
-    // Watch for changes in destination string and update destinationLatLng
+
     LaunchedEffect(destinationText) {
         if (destinationText.isNotBlank()) {
             val geocoder = Geocoder(context, Locale.getDefault())
@@ -62,7 +62,7 @@ fun MapScreen(
         }
     }
 
-    // Request location only once at startup
+
     LaunchedEffect(isLocationPermissionGranted) {
         if (isLocationPermissionGranted) {
             val locationClient = LocationServices.getFusedLocationProviderClient(context)
@@ -90,7 +90,7 @@ fun MapScreen(
         }
     }
 
-    Box(modifier = modifier) {  // Respect passed height/width
+    Box(modifier = modifier) {
         GoogleMap(
             modifier = Modifier.fillMaxSize(),
             cameraPositionState = cameraPositionState,

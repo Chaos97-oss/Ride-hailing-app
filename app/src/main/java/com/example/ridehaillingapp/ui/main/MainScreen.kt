@@ -115,7 +115,7 @@ fun MainScreen(
                             address = pickup
                         ),
                         endLocation = LocationData(
-                            latitude = 0.0,  // You can update this if needed
+                            latitude = 0.0,
                             longitude = 0.0,
                             address = destination
                         ),
