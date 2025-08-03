@@ -34,7 +34,7 @@ fun MainScreen(
     var destination by remember { mutableStateOf("") }
 
     var currentLatLng by remember { mutableStateOf(LatLng(0.0, 0.0)) }
-
+    var destinationLatLng by remember { mutableStateOf(LatLng(0.0, 0.0)) }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -59,6 +59,10 @@ fun MainScreen(
             onCurrentLatLngDetected = { latLng ->
                 currentLatLng = latLng
             },
+            onDestinationLatLngDetected = { latLng ->
+                destinationLatLng = latLng
+            },
+            destinationLatLng = destinationLatLng,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(250.dp)
@@ -115,9 +119,10 @@ fun MainScreen(
                             address = pickup
                         ),
                         endLocation = LocationData(
-                            latitude = 0.0,
-                            longitude = 0.0,
+                            latitude = destinationLatLng.latitude,
+                            longitude = destinationLatLng.longitude,
                             address = destination
+
                         ),
                         fare = fareEstimate ?: 0.0,
                         timestamp = System.currentTimeMillis()
